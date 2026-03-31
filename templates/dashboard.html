@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实时数据监控</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.0"></script>
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+    <script src="/js/chart.js"></script>
+    <script src="/js/websocket.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .header {
+            background: white;
+            padding: 1rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .header h1 {
+            color: #333;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+        
+        .control-btn {
+            background: #4f46e5;
+            color: white;
+        }
+        
+        .control-btn:hover {
+            background: #4338ca;
+            transform: translateY(-2px);
+        }
+        
+        .start-btn {
+            background: #10b981;
+            color: white;
+        }
+        
+        .stop-btn {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .logout-btn {
+            background: #6b7280;
+            color: white;
+        }
+        
+        .chart-controls {
+            background: white;
+            padding: 1rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .chart-control-group {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .chart-info {
+            margin-left: auto;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .chart-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        
+        .chart-title {
+            text-align: center;
+            margin-bottom: 1rem;
+            color: #374151;
+        }
+        
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        
+        .status {
+            display: flex;
+            gap: 20px;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #6b7280;
+            flex-wrap: wrap;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        
+        .online {
+            background: #10b981;
+        }
+        
+        .offline {
+            background: #ef4444;
+        }
+        
+        .stats-panel {
+            background: white;
+            padding: 1rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        
+        .stat-card {
+            padding: 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+        
+        .stat-title {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #111827;
+        }
+        
+        .stat-details {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: #9ca3af;
+            margin-top: 0.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .header, .chart-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .chart-info {
+                margin-left: 0;
+                margin-top: 10px;
+            }
+        }
+        
+        /* 鼠标悬停提示 */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .tooltip .tooltip-text {
+            visibility: hidden;
+            width: 200px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.8rem;
+        }
+        
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 实时数据监控系统</h1>
+        <div class="controls">
+            <button class="start-btn" onclick="startGenerator()">开始生成数据</button>
+            <button class="stop-btn" onclick="stopGenerator()">停止生成数据</button>
+            <button class="logout-btn" onclick="logout()">退出登录</button>
+        </div>
+    </div>
+    
+    <div class="chart-controls">
+        <div class="chart-control-group">
+            <button class="control-btn" onclick="chartManager.goToStart()">◀◀ 开头</button>
+            <button class="control-btn" onclick="chartManager.scrollLeft()">◀ 左移</button>
+            <button class="control-btn" onclick="chartManager.zoomIn()">🔍+ 放大</button>
+            <button class="control-btn" onclick="chartManager.zoomOut()">🔍- 缩小</button>
+            <button class="control-btn" onclick="chartManager.scrollRight()">▶ 右移</button>
+            <button class="control-btn" onclick="chartManager.goToEnd()">▶▶ 结尾</button>
+            <button class="control-btn" onclick="chartManager.resetView()">🔄 重置</button>
+        </div>
+        <div class="chart-info">
+            数据点: <span id="dataCount">0</span> | 
+            视图: <span id="viewStart">0</span>-<span id="viewEnd">0</span> | 
+            最后更新: <span id="lastUpdate">-</span>
+        </div>
+    </div>
+    
+    <div class="charts-container">
+        <div class="chart-card">
+            <h3 class="chart-title">温度监控</h3>
+            <div class="chart-wrapper">
+                <canvas id="tempChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h3 class="chart-title">湿度监控</h3>
+            <div class="chart-wrapper">
+                <canvas id="humidityChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h3 class="chart-title">CPU使用率</h3>
+            <div class="chart-wrapper">
+                <canvas id="cpuChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h3 class="chart-title">内存使用率</h3>
+            <div class="chart-wrapper">
+                <canvas id="memoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="status">
+        <div class="status-item">
+            <span>连接状态:</span>
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">离线</span>
+        </div>
+        <div class="status-item">
+            WebSocket: <span id="wsStatus">离线</span>
+        </div>
+        <div class="status-item">
+            数据生成: <span id="generatorStatus">停止</span>
+        </div>
+        <div class="status-item">
+            数据延迟: <span id="dataLag">-</span>
+        </div>
+        <div class="status-item tooltip">
+            🔄
+            <span class="tooltip-text">点击手动重连WebSocket</span>
+        </div>
+    </div>
+    
+    <div class="stats-panel">
+        <h3>统计数据</h3>
+        <div class="stats-grid" id="statsGrid">
+            <!-- 统计信息会动态更新 -->
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let chartManager = null;
+        let wsManager = null;
+        let lastUpdateTime = null;
+        let isGeneratorRunning = false;
+        
+        // 初始化图表管理器
+        function initChartManager() {
+            chartManager = new ChartManager();
+            chartManager.initAllCharts();
+            console.log('图表管理器初始化完成');
+        }
+        
+        // 初始化WebSocket管理器
+        function initWebSocket() {
+            wsManager = new WebSocketManager();
+            
+            // 设置事件监听
+            wsManager.on('connected', (data) => {
+                updateStatus(true, '已连接');
+                console.log('WebSocket已连接:', data);
+                
+                // 连接成功后请求所有数据
+                wsManager.requestAllData();
+            });
+            
+            wsManager.on('disconnected', (data) => {
+                updateStatus(false, '已断开: ' + data.reason);
+            });
+            
+            wsManager.on('server_connected', (data) => {
+                console.log('服务器连接确认:', data);
+            });
+            
+            wsManager.on('all_data', (data) => {
+                console.log('收到历史数据:', data?.length || 0, '条');
+                if (data && Array.isArray(data)) {
+                    chartManager.loadHistoricalData(data);
+                    updateViewInfo();
+                    updateStatistics();
+                }
+            });
+            
+            wsManager.on('data', (data) => {
+                console.log('实时数据更新:', data);
+                chartManager.addData(data);
+                lastUpdateTime = new Date();
+                updateViewInfo();
+                updateStatistics();
+            });
+            
+            wsManager.on('generator_status', (data) => {
+                console.log('生成器状态更新:', data.status);
+                isGeneratorRunning = data.status === 'started';
+                updateGeneratorStatus();
+            });
+            
+            wsManager.on('error', (data) => {
+                console.error('WebSocket错误:', data.error);
+            });
+            
+            wsManager.on('reconnected', (data) => {
+                console.log('重连成功:', data);
+                updateStatus(true, '已重连');
+            });
+            
+            // 开始连接
+            wsManager.connect();
+        }
+        
+        // 更新状态显示
+        function updateStatus(connected, message) {
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            const wsStatus = document.getElementById('wsStatus');
+            
+            if (connected) {
+                statusDot.className = 'status-dot online';
+                statusText.textContent = '在线';
+                wsStatus.textContent = message || '已连接';
+                wsStatus.style.color = '#10b981';
+            } else {
+                statusDot.className = 'status-dot offline';
+                statusText.textContent = '离线';
+                wsStatus.textContent = message || '已断开';
+                wsStatus.style.color = '#ef4444';
+            }
+        }
+        
+        // 更新生成器状态
+        function updateGeneratorStatus() {
+            const generatorStatus = document.getElementById('generatorStatus');
+            if (isGeneratorRunning) {
+                generatorStatus.textContent = '运行中';
+                generatorStatus.style.color = '#10b981';
+            } else {
+                generatorStatus.textContent = '停止';
+                generatorStatus.style.color = '#ef4444';
+            }
+        }
+        
+        // 更新视图信息
+        function updateViewInfo() {
+            if (!chartManager) return;
+            
+            const viewInfo = chartManager.getViewInfo();
+            document.getElementById('dataCount').textContent = viewInfo.totalPoints;
+            document.getElementById('viewStart').textContent = viewInfo.viewStart + 1;
+            document.getElementById('viewEnd').textContent = viewInfo.viewEnd;
+            
+            if (lastUpdateTime) {
+                const now = new Date();
+                const diff = Math.floor((now - lastUpdateTime) / 1000);
+                if (diff < 5) {
+                    document.getElementById('lastUpdate').textContent = '刚刚';
+                } else if (diff < 60) {
+                    document.getElementById('lastUpdate').textContent = `${diff}秒前`;
+                } else {
+                    document.getElementById('lastUpdate').textContent = 
+                        lastUpdateTime.toLocaleTimeString();
+                }
+            }
+        }
+        
+        // 更新统计信息
+        function updateStatistics() {
+            if (!chartManager) return;
+            
+            const stats = chartManager.getStatistics();
+            if (!stats) return;
+            
+            const statsGrid = document.getElementById('statsGrid');
+            
+            const statsHTML = `
+                <div class="stat-card">
+                    <div class="stat-title">🌡️ 温度</div>
+                    <div class="stat-value">${stats.temperature.current}°C</div>
+                    <div class="stat-details">
+                        <span>平均: ${stats.temperature.avg}</span>
+                        <span>范围: ${stats.temperature.min}-${stats.temperature.max}</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">💧 湿度</div>
+                    <div class="stat-value">${stats.humidity.current}%</div>
+                    <div class="stat-details">
+                        <span>平均: ${stats.humidity.avg}</span>
+                        <span>范围: ${stats.humidity.min}-${stats.humidity.max}</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">💻 CPU</div>
+                    <div class="stat-value">${stats.cpu.current}%</div>
+                    <div class="stat-details">
+                        <span>平均: ${stats.cpu.avg}</span>
+                        <span>范围: ${stats.cpu.min}-${stats.cpu.max}</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">🧠 内存</div>
+                    <div class="stat-value">${stats.memory.current}%</div>
+                    <div class="stat-details">
+                        <span>平均: ${stats.memory.avg}</span>
+                        <span>范围: ${stats.memory.min}-${stats.memory.max}</span>
+                    </div>
+                </div>
+            `;
+            
+            statsGrid.innerHTML = statsHTML;
+        }
+        
+        // 控制函数
+        async function startGenerator() {
+            try {
+                // 优先使用WebSocket
+                if (wsManager && wsManager.isConnected) {
+                    wsManager.startGenerator();
+                } else {
+                    // 回退到HTTP API
+                    const response = await fetch('/api/start');
+                    if (response.ok) {
+                        isGeneratorRunning = true;
+                        updateGeneratorStatus();
+                        console.log('数据生成器已启动');
+                    }
+                }
+            } catch (error) {
+                console.error('启动失败:', error);
+            }
+        }
+        
+        async function stopGenerator() {
+            try {
+                // 优先使用WebSocket
+                if (wsManager && wsManager.isConnected) {
+                    wsManager.stopGenerator();
+                } else {
+                    // 回退到HTTP API
+                    const response = await fetch('/api/stop');
+                    if (response.ok) {
+                        isGeneratorRunning = false;
+                        updateGeneratorStatus();
+                        console.log('数据生成器已停止');
+                    }
+                }
+            } catch (error) {
+                console.error('停止失败:', error);
+            }
+        }
+        
+        async function logout() {
+            try {
+                await fetch('/logout');
+                window.location.href = '/';
+            } catch (error) {
+                console.error('退出失败:', error);
+            }
+        }
+        
+        // 页面加载完成
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('页面加载完成，初始化系统...');
+            
+            // 初始化组件
+            initChartManager();
+            initWebSocket();
+            
+            // 获取初始状态
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(status => {
+                    isGeneratorRunning = status.running;
+                    updateGeneratorStatus();
+                })
+                .catch(error => {
+                    console.error('获取状态失败:', error);
+                });
+            
+            // 每3秒更新一次视图信息
+            setInterval(updateViewInfo, 3000);
+            
+            // 每5秒更新一次统计信息
+            setInterval(updateStatistics, 5000);
+            
+            // 每10秒检查一次连接
+            setInterval(() => {
+                if (wsManager && !wsManager.isConnected) {
+                    console.log('检测到连接断开，尝试重连...');
+                    wsManager.connect();
+                }
+            }, 10000);
+            
+            // 添加键盘快捷键
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey) {
+                    switch(e.key) {
+                        case 'ArrowLeft':
+                            e.preventDefault();
+                            if (chartManager) chartManager.scrollLeft();
+                            break;
+                        case 'ArrowRight':
+                            e.preventDefault();
+                            if (chartManager) chartManager.scrollRight();
+                            break;
+                        case 'Home':
+                            e.preventDefault();
+                            if (chartManager) chartManager.goToStart();
+                            break;
+                        case 'End':
+                            e.preventDefault();
+                            if (chartManager) chartManager.goToEnd();
+                            break;
+                        case '+':
+                        case '=':
+                            e.preventDefault();
+                            if (chartManager) chartManager.zoomIn();
+                            break;
+                        case '-':
+                        case '_':
+                            e.preventDefault();
+                            if (chartManager) chartManager.zoomOut();
+                            break;
+                        case 'r':
+                        case 'R':
+                            e.preventDefault();
+                            if (chartManager) chartManager.resetView();
+                            break;
+                        case 's':
+                        case 'S':
+                            e.preventDefault();
+                            startGenerator();
+                            break;
+                        case 't':
+                        case 'T':
+                            e.preventDefault();
+                            stopGenerator();
+                            break;
+                    }
+                }
+            });
+            
+            // 添加触摸事件支持
+            let touchStartX = null;
+            let touchStartY = null;
+            
+            document.addEventListener('touchstart', (e) => {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            }, { passive: true });
+            
+            document.addEventListener('touchend', (e) => {
+                if (!touchStartX || !touchStartY || !chartManager) return;
+                
+                const touchEndX = e.changedTouches[0].clientX;
+                const touchEndY = e.changedTouches[0].clientY;
+                
+                const diffX = touchStartX - touchEndX;
+                const diffY = touchStartY - touchEndY;
+                
+                // 如果是水平滑动且垂直移动不大
+                if (Math.abs(diffX) > 50 && Math.abs(diffY) < 30) {
+                    if (diffX > 0) {
+                        // 左滑 - 向右滚动
+                        chartManager.scrollRight();
+                    } else {
+                        // 右滑 - 向左滚动
+                        chartManager.scrollLeft();
+                    }
+                }
+                
+                touchStartX = null;
+                touchStartY = null;
+            }, { passive: true });
+            
+            // 添加连接状态监控
+            window.addEventListener('online', () => {
+                console.log('网络已连接，尝试重新连接WebSocket...');
+                if (wsManager) {
+                    wsManager.connect();
+                }
+            });
+            
+            window.addEventListener('offline', () => {
+                console.log('网络已断开');
+                updateStatus(false, '网络断开');
+            });
+        });
+        
+        // 页面卸载时清理
+        window.addEventListener('beforeunload', () => {
+            if (wsManager) {
+                wsManager.disconnect();
+            }
+        });
+    </script>
+</body>
+</html>

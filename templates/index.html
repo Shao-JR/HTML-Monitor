@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实时数据监控系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        .header {
+            background: #4f46e5;
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .content {
+            padding: 2rem;
+        }
+        
+        .intro {
+            margin-bottom: 2rem;
+        }
+        
+        .intro h2 {
+            color: #4f46e5;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+        }
+        
+        .intro p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .feature-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 1.5rem;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .feature-card h3 {
+            color: #4f46e5;
+            margin-bottom: 0.5rem;
+            font-size: 1.2rem;
+        }
+        
+        .feature-card p {
+            color: #64748b;
+            font-size: 0.95rem;
+        }
+        
+        .login-options {
+            background: #f1f5f9;
+            padding: 2rem;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .login-options h3 {
+            color: #475569;
+            margin-bottom: 1.5rem;
+            font-size: 1.4rem;
+        }
+        
+        .user-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .user-item {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            min-width: 150px;
+        }
+        
+        .user-item strong {
+            color: #4f46e5;
+            font-size: 1.1rem;
+        }
+        
+        .login-btn {
+            display: inline-block;
+            background: #4f46e5;
+            color: white;
+            text-decoration: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: background 0.3s, transform 0.3s;
+        }
+        
+        .login-btn:hover {
+            background: #4338ca;
+            transform: translateY(-2px);
+        }
+        
+        .instructions {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+        
+        .instructions h4 {
+            color: #0369a1;
+            margin-bottom: 0.5rem;
+        }
+        
+        .instructions ul {
+            padding-left: 1.5rem;
+            color: #0c4a6e;
+        }
+        
+        .instructions li {
+            margin-bottom: 0.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .content {
+                padding: 1.5rem;
+            }
+            
+            .user-list {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .user-item {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+        
+        .qr-section {
+            text-align: center;
+            margin-top: 2rem;
+            padding: 1rem;
+            background: #f8fafc;
+            border-radius: 10px;
+        }
+        
+        .qr-code {
+            width: 150px;
+            height: 150px;
+            margin: 1rem auto;
+            background: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 实时数据监控系统</h1>
+            <p>手机端实时查看电脑生成的数据图表</p>
+        </div>
+        
+        <div class="content">
+            <div class="intro">
+                <h2>欢迎使用实时数据监控系统</h2>
+                <p>这是一个前后端分离的系统，允许您在手机端实时监控电脑端生成的模拟数据。系统通过WebSocket实现实时数据传输，响应式设计完美适配手机屏幕。</p>
+            </div>
+            
+            <div class="features">
+                <div class="feature-card">
+                    <h3>🔐 安全登录</h3>
+                    <p>使用账户密码登录，保护您的数据安全</p>
+                </div>
+                <div class="feature-card">
+                    <h3>📱 移动适配</h3>
+                    <p>完美适配各种手机屏幕尺寸</p>
+                </div>
+                <div class="feature-card">
+                    <h3>⚡ 实时更新</h3>
+                    <p>WebSocket技术实现毫秒级实时数据更新</p>
+                </div>
+                <div class="feature-card">
+                    <h3>📈 多图表展示</h3>
+                    <p>同时监控多个数据指标的变化趋势</p>
+                </div>
+            </div>
+            
+            <div class="login-options">
+                <h3>使用以下账户登录</h3>
+                
+                <div class="user-list">
+                    <div class="user-item">
+                        <strong>管理员账户</strong><br>
+                        用户名: <code>admin</code><br>
+                        密码: <code>admin123</code>
+                    </div>
+                    <div class="user-item">
+                        <strong>普通用户账户</strong><br>
+                        用户名: <code>user</code><br>
+                        密码: <code>user123</code>
+                    </div>
+                </div>
+                
+                <a href="/login" class="login-btn">进入登录页面</a>
+            </div>
+            
+            <div class="instructions">
+                <h4>使用说明：</h4>
+                <ul>
+                    <li>1. 确保手机和电脑连接在同一个网络（同一WiFi）</li>
+                    <li>2. 点击上方按钮进入登录页面</li>
+                    <li>3. 使用提供的测试账户登录</li>
+                    <li>4. 在监控页面查看实时数据图表</li>
+                    <li>5. 可以随时开始/停止数据生成</li>
+                </ul>
+            </div>
+            
+            <div class="qr-section">
+                <h4>手机扫描快速访问</h4>
+                <p>在手机上安装二维码扫描应用，扫描下方二维码快速访问（需在同一网络）</p>
+                <div class="qr-code" id="qrCode">
+                    <!-- 二维码将在这里生成 -->
+                    <div style="text-align: center;">
+                        <div style="margin-bottom: 10px;">📱</div>
+                        <div>访问系统</div>
+                        <div>请使用手机浏览器</div>
+                    </div>
+                </div>
+                <p id="currentUrl">当前访问地址: 正在获取...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 显示当前URL
+        document.getElementById('currentUrl').textContent = 
+            '当前访问地址: ' + window.location.href;
+        
+        // 生成QR码的URL
+        const currentUrl = window.location.href;
+        const qrCodeDiv = document.getElementById('qrCode');
+        
+        // 如果有QR码库，这里可以生成真正的QR码
+        // 这里使用简单的文字显示
+        qrCodeDiv.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+                <div style="font-size: 24px; margin-bottom: 10px;">📱</div>
+                <div style="font-size: 12px; word-break: break-all; background: white; padding: 10px; border-radius: 5px; margin: 10px;">
+                    ${currentUrl}
+                </div>
+                <div style="font-size: 12px; color: #666; margin-top: 10px;">
+                    请复制此URL到手机浏览器访问
+                </div>
+            </div>
+        `;
+        
+        // 检查连接状态
+        async function checkServerStatus() {
+            try {
+                const response = await fetch('/api/status');
+                if (response.ok) {
+                    console.log('服务器连接正常');
+                }
+            } catch (error) {
+                console.warn('服务器连接失败，请确保后端已启动');
+            }
+        }
+        
+        // 页面加载时检查服务器状态
+        window.addEventListener('load', () => {
+            checkServerStatus();
+        });
+    </script>
+</body>
+</html>
